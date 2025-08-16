@@ -1,19 +1,12 @@
 import jwt from "jsonwebtoken";
-import { User } from "../../db/model/users.js";
+export const generateToken = (
+{payload,
+secretKey = process.env.JWT_SECRET,
+options = { expiresIn: "15m" }}
+) => {
+    return jwt.sign(payload, secretKey, options)
+}
 
-
-export const protect = async (req, res, next) => {
-    const token = req.headers.authorization;
-    if (!token) {
-        throw new Error("token is required",{cause:401});
-        
-    }
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const userExsit = await User.findById(payload.id);
-
-    if (!userExsit) {
-        throw new Error("User not found",{cause:401});
-    }
-    req.user = userExsit;
-     return  next();
-};
+export const verifyToken = (token, secretKey = process.env.JWT_SECRET) => {
+    return jwt.verify(token, secretKey)
+}

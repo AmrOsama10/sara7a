@@ -24,7 +24,7 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        
+
         required: function (value) {
             if (this.userAgent === "google") return false;
             return true;
@@ -40,33 +40,39 @@ const userSchema = new Schema({
     dob: {
         type: Date,
     },
-    isVerified:{
-        type:Boolean,
-        default:false
+    isVerified: {
+        type: Boolean,
+        default: false
     },
-    userAgent:{
-        type:String,
-        enum:["local","google"],
-        default:"local"
+    userAgent: {
+        type: String,
+        enum: ["local", "google"],
+        default: "local"
     },
-    otp:{
-        type:Number
+    otp: {
+        type: Number
     },
-    otpExpiry:{
-        type:Date
+    otpExpiry: {
+        type: Date
     },
-    refreshToken:{
-        type:String
-    },profilePicture:{
-        type:String
+    otpAttempts: {
+        type: Number, default: 0
+    },
+    otpBlockedUntil: {
+        type: Date, default: null
+    },
+
+    profilePicture: {
+        secure_url: String,
+        public_id: String
     }
 }, {
     timestamps: true,
-    toObject:{
-        virtuals:true
+    toObject: {
+        virtuals: true
     },
-    toJSON:{
-        virtuals:true
+    toJSON: {
+        virtuals: true
     }
 })
 

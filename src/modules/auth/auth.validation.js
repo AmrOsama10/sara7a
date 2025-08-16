@@ -13,3 +13,8 @@ export const loginSchema = Joi.object({
     phoneNumber: Joi.string().min(10).max(15),
 }).or("email", "phoneNumber")
 
+export const resetPasswordSchema = Joi.object({
+    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }),
+    otp: Joi.string().max(4).required(),
+    newPassword: Joi.string().required().min(6).max(21),
+})
