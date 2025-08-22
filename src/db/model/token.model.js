@@ -10,8 +10,14 @@ const tokenSchema = new Schema({
         type:String,
         enum: ["access","refresh" ],
         default: "access"
+    },
+    expiresAt: {
+        type: Date, 
+        required: true 
     }
 
 }, { timestamps: true })
+
+tokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export const Token = model("Token", tokenSchema)

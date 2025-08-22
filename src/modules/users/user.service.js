@@ -1,7 +1,8 @@
-import { User } from "../../db/model/users.js";
+import { User } from "../../db/model/users.model.js";
 import bcrypt from "bcrypt";
 import fs from "fs"
 import cloudinary from "../../cloud/cloudinary.config.js";
+import { Token } from "../../db/model/token.model.js";
 export const updatePassword = async (req, res, next) => {
     const { oldPassword, newPassword } = req.body;
 
@@ -45,12 +46,19 @@ export const uploadProfilePictureCloud = async (req, res, next) => {
 }
 
 export const deleteAccount = async (req, res, next) => {
-    if (req.user.profilePicture.public_id) {
-        await cloudinary.api.delete_resources_by_prefix(`saraha/users/${req.user._id}`)
-        await cloudinary.api.delete_folder(`saraha/users/${req.user._id}`)
-    }
 
-    await User.deleteOne({ _id: req.user._id })
+    await User.updateOne({ _id: req.user._id }, { deletedAt: Date.now(), credentionalUpdatedAt: Date.now() })
+    await Token.deleteMany({ user: req.user._id })
+
+
     return res.status(200).json({ message: "Account deleted successfully", success: true })
 }
 
+export const getProfile = async (req,res,next) =>{
+   const user = await User.findOne({ _id: req.user._id},{},{
+        populate:{
+            path:"messages"
+        }
+    })
+    return res.status(200).json({ message: "Profile fetched successfully", success: true, user })
+}

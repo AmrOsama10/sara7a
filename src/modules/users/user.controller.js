@@ -22,5 +22,7 @@ fileValidation(),user.uploadProfilePictureCloud)
 
 router.delete("/delete-account",isAuthntcation,user.deleteAccount)
 
+router.get("/",isAuthntcation,user.getProfile)
+
 
 export default router

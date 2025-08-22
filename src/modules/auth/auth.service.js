@@ -1,13 +1,10 @@
-import { User } from "../../db/model/users.js";
+import { User } from "../../db/model/users.model.js";
 import sendEmail from "../../utils/sendEmail/index.js";
 import { generateOtp } from "../../utils/otp/index.js";
 import { OAuth2Client } from "google-auth-library";
 import { Token } from "../../db/model/token.model.js";
 import { generateToken, verifyToken } from "../../utils/token/index.js";
 import { comparePassword, hashPassword } from "../../utils/hashing/index.js"
-
-
-
 
 
 export const register = async (req, res) => {
@@ -65,28 +62,16 @@ export const verifyAccount = async (req, res) => {
 
     if (!user) throw new Error("User not found", { cause: 404 });
 
-    if (user.otpBlockedUntil && user.otpBlockedUntil > Date.now()) {
-        const waitTime = Math.ceil((user.otpBlockedUntil - Date.now()) / 1000);
-        throw new Error(`Too many attempts. Try again in ${waitTime} seconds`, { cause: 429 });
-    }
- 
     if (user.otp !== otp || user.otpExpiry < Date.now()) {
-        user.otpAttempts += 1;
-
-        if (user.otpAttempts >= 4) {
-            user.otpBlockedUntil = new Date(Date.now() + 2 * 60 * 1000); 
-            user.otpAttempts = 0;
-        }
 
         await user.save();
-        throw new Error("Invalid or expired OTP",{cause:400});
+        throw new Error("Invalid or expired OTP", { cause: 400 });
     }
 
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
-    user.otpAttempts = 0;
-    user.otpBlockedUntil = undefined;
+
     await user.save();
 
     return res.status(200).json({ message: "User verified successfully", success: true });
@@ -97,17 +82,11 @@ export const sendOtp = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) throw new Error("User not found", { cause: 404 });
 
-    
-    if (user.otpBlockedUntil && user.otpBlockedUntil > Date.now()) {
-        const waitTime = Math.ceil((user.otpBlockedUntil - Date.now()) / 1000);
-        throw new Error( `You are blocked. Try again in ${waitTime} seconds`, { cause: 429 });
-    }
-
     const { otp, otpExpiry } = generateOtp();
     user.otp = otp;
     user.otpExpiry = otpExpiry;
-    user.otpAttempts = 0; 
-   
+
+
     await user.save();
 
     sendEmail({
@@ -156,34 +135,28 @@ export const login = async (req, res) => {
     if (!isValidPassword) {
         throw new Error("invalid credentials", { cause: 400 })
     }
-    const accessToken = generateToken({ payload: { id: userExist._id } },{options:{expiresIn:"15m"}})
-    const refreshToken = generateToken({ payload: { id: userExist._id }, options: { expiresIn: "7d" } })
+
+    if (userExist.deletedAt){
+        userExist.deletedAt = undefined;
+        userExist.save()
+    }
+    
+    const accessToken = generateToken({
+        payload: { id: userExist._id },
+        options: { expiresIn: "5s" }
+    })
+    const refreshToken = generateToken({
+        payload: { id: userExist._id },
+        options: { expiresIn: "7d" }
+    })
     await Token.create({
-        token:refreshToken,
-        user:userExist._id,
-        type:"refresh"
+        token: refreshToken,
+        user: userExist._id,
+        type: "refresh",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     })
     return res.status(200).json({ message: "User logged in successfully", success: true, accessToken, refreshToken })
 }
-
-// export const refreshToken = async (req, res, next) => {
-//     const refreshToken = req.headers.refreshToken;
-//     if (!refreshToken) {
-//         throw new Error("Unauthorized", { cause: 401 })
-//     }
-//     const user = await Token.findOne({ token: refreshToken, type: "refresh" })
-//     if (!user) {
-//         throw new Error("Unauthorized", { cause: 401 })
-//     }
-//     verifyToken(refreshToken, (err, decoded) => {
-//         if (err) {
-//             throw new Error("Invalid refresh token", { cause: 403 });
-//         }
-//         const accessToken = generateToken({ payload: { id: decoded.id } })
-//         return res.status(200).json({ message: "User logged in successfully", success: true, accessToken })
-//     })
-
-// }
 
 export const googleLogin = async (req, res) => {
     const { idToken } = req.body;
@@ -210,16 +183,18 @@ export const resetPassword = async (req, res, next) => {
     if (!user) {
         throw new Error("user not found", { cause: 404 });
     }
-    if (user.otp != otp) {
+    if (user.otp !== otp) {
         throw new Error("Invalid otp", { cause: 400 });
     }
     if (Date.now() > user.otpExpiry) {
         throw new Error("otp expired", { cause: 400 });
     }
     user.password = hashPassword(newPassword)
+    user.credentionalUpdatedAt = Date.now()
     user.otp = undefined;
     user.otpExpiry = undefined
     await user.save()
+    await Token.deleteMany({ user: user._id, type: "refresh" })
     return res.status(200).json({ message: "Password reset successfully", success: true })
 }
 

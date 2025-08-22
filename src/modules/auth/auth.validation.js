@@ -15,6 +15,6 @@ export const loginSchema = Joi.object({
 
 export const resetPasswordSchema = Joi.object({
     email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }),
-    otp: Joi.string().max(4).required(),
+    otp: Joi.string().max(5).required(),
     newPassword: Joi.string().required().min(6).max(21),
 })

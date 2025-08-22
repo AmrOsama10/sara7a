@@ -7,4 +7,20 @@ cloudinary.config({
     cloud_name: process.env.CLOUD_NAME
 })
 
+export async function uploadFile(path, options) {
+    return await cloudinary.uploader.upload(path, options)
+}
+
+export async function uploadFiles(files, options) {
+    let attachments = [];
+    for (const file of files) {
+        const { secure_url, public_id } = await uploadFile(
+            file.path,
+            options
+        )
+        attachments.push({ secure_url, public_id })
+    }
+    return attachments
+}
+
 export default cloudinary
